@@ -1,0 +1,30 @@
+{
+  "deployment_mode": "network",
+  "servers": {
+    "exchange": {
+      "host": "172.24.144.1",
+      "port": 8001,
+      "bind_host": "0.0.0.0"
+    },
+    "relay": {
+      "host": "10.135.25.29",
+      "port": 8002,
+      "bind_host": "0.0.0.0"
+    },
+    "shared": {
+      "host": "172.31.128.1",
+      "port": 8003,
+      "bind_host": "0.0.0.0"
+    }
+  },
+  "network_deployment": {
+    "auto_detect_ip": false,
+    "server_ip": "10.135.25.174",
+    "bind_all_interfaces": true
+  },
+  "logging": {
+    "enable_tick_logging": true,
+    "log_directory": "logs",
+    "log_level": "INFO"
+  }
+}
