@@ -26,5 +26,5 @@
     "enable_tick_logging": true,
     "log_directory": "logs",
     "log_level": "INFO"
-  }
+}
 }
