@@ -31,6 +31,7 @@ The platform utilizes a four-stage, decoupled data pipeline. Each component is a
 ## Project Components
 
 The repository is structured into several key components:
+```
 .
 ├── clients/                       # Contains the UI dashboard and strategy logic
 ├── data_recorder/                 # Script to capture live market data
@@ -39,7 +40,7 @@ The repository is structured into several key components:
 ├── HFT_Platform_Analysis.ipynb    # The project analysis and presentation
 ├── README.md                      # This file
 └── requirements.txt               # Project dependencies
-
+```
 
 -   **`data_recorder/`**: A standalone script that connects to the exchange API and saves trade/quote data to local CSV files.
 -   **`server/`**: The heart of the simulation. It reads the CSV files, sorts all events by timestamp, and broadcasts them onto the network as if they were happening live.
@@ -121,3 +122,4 @@ The system components must be launched in a specific order, each in its **own se
 The file `HFT_Platform_Analysis.ipynb` is a Jupyter Notebook containing the detailed analysis, benchmarks, and technical breakdown of this project. To view it, run the following command from your terminal:
 ```bash
 jupyter notebook HFT_Platform_Analysis.ipynb
+
