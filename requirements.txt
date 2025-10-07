@@ -1,0 +1,11 @@
+pandas
+numpy
+pyzmq
+matplotlib
+seaborn
+jupyter
+notebook
+python-binance
+networkx
+graphviz
+pandas-ta
