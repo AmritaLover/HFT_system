@@ -241,4 +241,6 @@ class QuantTerminal:
 if __name__ == '__main__':
     root = tk.Tk()
     app = QuantTerminal(root)
+
     root.mainloop()
+    
