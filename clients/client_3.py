@@ -1,47 +1,3 @@
-# advanced_terminal.py
-#
-# A High-Performance Quantitative Trading Terminal implementing advanced algorithms.
-#
-# STRATEGIES IMPLEMENTED:
-# 1. Graph-Based SSSP: Models price action as a graph and uses Dijkstra's algorithm
-#    with a min-heap to find the most probable price path.
-# 2. ML Time Series: Uses a fast, online-learning ML model (SGDRegressor) on
-#    rolling statistical features to forecast price movements.
-# 3. Alternative Event-Driven:
-#    - Directional Change (DC): An event-based trend detection algorithm.
-#    - Dynamic Time Warping (DTW): Matches current price action against historical patterns.
-#
-# PREREQUISITES:
-# pip install pyzmq pandas numpy scikit-learn matplotlib fastdtw
-
-# advanced_terminal_v2_fixed.py
-#
-# A High-Performance Quantitative Trading Terminal implementing advanced algorithms.
-#
-# VERSION 2 FIXES:
-# 1. Resolved "SGDRegressor not fitted" error by adding a check to ensure the model
-#    is trained once before predicting.
-# 2. Re-integrated Matplotlib charts into a dedicated "Charts" tab. The UI now
-#    features a live P&L chart and a dynamic strategy chart that updates on symbol selection.
-# advanced_terminal_v3_fixed.py
-#
-# A High-Performance Quantitative Trading Terminal implementing advanced algorithms.
-#
-# VERSION 3 FIXES:
-# 1. Resolved "Input vector should be 1-D" error in the DTW strategy by removing
-#    the incorrect `dist=euclidean` argument from the `fastdtw` calls. The default,
-#    correct distance metric for 1-D sequences is now used.
-
-# advanced_terminal_v5_stateful.py
-#
-# A High-Performance Quantitative Trading Terminal implementing advanced algorithms.
-#
-# VERSION 5 FIXES:
-# 1. Implemented "State-Aware" trading logic to prevent whipsawing.
-#    - The engine now only looks for BUY signals when inventory is zero.
-#    - It only looks for SELL signals when it is already holding a position.
-#    - This ensures positions are held, and the Inventory column populates correctly.
-
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 import zmq
@@ -59,16 +15,13 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-# --- CONFIGURATION ---
 RELAY_IP = '127.0.0.1'
 RELAY_PORT = '5556'
 INITIAL_CASH = 1000000.0
 SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT']
-DATA_HISTORY_LEN = 300 # General data history for display and calculations
+DATA_HISTORY_LEN = 300 
 
-# --- ZMQ DATA INGESTION THREAD ---
 def zmq_thread_worker(app_instance):
-    """This thread's ONLY job is to get data from the network and put it in a queue. It is built for speed."""
     context = zmq.Context()
     socket = context.socket(zmq.SUB)
     socket.connect(f"tcp://{RELAY_IP}:{RELAY_PORT}")
@@ -89,9 +42,7 @@ def zmq_thread_worker(app_instance):
             break
     print("ZMQ thread has shut down.")
 
-# --- TRADING ENGINE THREAD ---
 def trading_engine_worker(app_instance):
-    """This thread is the core 'brain' of the bot, running all strategies."""
     print("Trading Engine thread started.")
     
     price_history = {s: deque(maxlen=DATA_HISTORY_LEN) for s in SYMBOLS}
@@ -116,10 +67,8 @@ def trading_engine_worker(app_instance):
             
             votes = defaultdict(int)
             
-            ## FIX: Get current inventory to make the bot "state-aware"
             current_inventory = app_instance.inventory[symbol]
 
-            # --- Strategy 1: Graph-Based SSSP (Dijkstra) ---
             if params['graph_enabled'] and len(price_history[symbol]) > 1:
                 window = graph_window[symbol]
                 window.append((price, timestamp))
@@ -145,13 +94,11 @@ def trading_engine_worker(app_instance):
                     
                     min_dist_node = min(dist, key=dist.get); max_dist_node = max(dist, key=dist.get)
                     
-                    ## FIX: State-aware voting
                     if dist[min_dist_node] < dist[max_dist_node] and current_inventory > 0:
                         votes['SELL'] += 1
                     elif dist[max_dist_node] < dist[min_dist_node] and current_inventory == 0:
                         votes['BUY'] += 1
             
-            # --- Strategy 2: ML Time Series Prediction ---
             if params['ml_enabled'] and len(price_history[symbol]) >= 50:
                 series = pd.Series(list(price_history[symbol]))
                 features = np.array([
@@ -162,7 +109,6 @@ def trading_engine_worker(app_instance):
                 if not np.isnan(features).any():
                     if is_model_trained[symbol]:
                         prediction = ml_models[symbol].predict(features)[0]
-                        ## FIX: State-aware voting
                         if prediction > price and current_inventory == 0:
                             votes['BUY'] += 1
                         elif prediction < price and current_inventory > 0:
@@ -171,20 +117,17 @@ def trading_engine_worker(app_instance):
                     ml_models[symbol].partial_fit(features, [price])
                     is_model_trained[symbol] = True
 
-            # --- Strategy 3: Directional Change (DC) & DTW ---
             if params['dc_enabled']:
                 state = dc_state[symbol]; state['threshold'] = params['dc_threshold']
                 if state['trend'] == 0: state['trend'], state['extreme'] = 1, price
                 elif state['trend'] == 1:
                     if price < state['extreme'] * (1 - state['threshold']):
                         state['trend'], state['extreme'] = -1, price
-                        ## FIX: State-aware voting
                         if current_inventory > 0: votes['SELL'] += 1
                     else: state['extreme'] = max(state['extreme'], price)
                 elif state['trend'] == -1:
                     if price > state['extreme'] * (1 + state['threshold']):
                         state['trend'], state['extreme'] = 1, price
-                        ## FIX: State-aware voting
                         if current_inventory == 0: votes['BUY'] += 1
                     else: state['extreme'] = min(state['extreme'], price)
                 app_instance.strategy_states[f"{symbol}_DC"] = "UP" if state['trend'] == 1 else "DOWN"
@@ -196,7 +139,6 @@ def trading_engine_worker(app_instance):
                 dist_to_bear, _ = fastdtw(normalized_pattern, bear_pattern)
                 app_instance.strategy_states[f"{symbol}_DTW"] = f"Bull: {dist_to_bull:.2f}|Bear: {dist_to_bear:.2f}"
                 
-                ## FIX: State-aware voting
                 if dist_to_bull < params['dtw_threshold'] and dist_to_bull < dist_to_bear and current_inventory == 0:
                     votes['BUY'] += 1
                 if dist_to_bear < params['dtw_threshold'] and dist_to_bear < dist_to_bull and current_inventory > 0:
@@ -344,4 +286,3 @@ if __name__ == '__main__':
     root = tk.Tk()
     app = QuantTerminal(root)
     root.mainloop()
-
